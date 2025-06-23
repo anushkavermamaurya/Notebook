@@ -1,0 +1,147 @@
+**most commonly used basic Airflow operators** 
+
+
+1. **PythonOperator**
+
+Runs a Python function.
+
+from airflow.operators.python import PythonOperator
+
+PythonOperator(
+    task_id='my_python_task',
+    python_callable=my_function,  # REQUIRED: the function to call
+)
+
+2. **BashOperator**
+
+Executes a bash/shell command.
+
+from airflow.operators.bash import BashOperator
+
+BashOperator(
+    task_id='run_bash',
+    bash_command='echo "Hello World"',  # REQUIRED
+)
+
+3. **EmptyOperator** (formerly DummyOperator)
+
+Does nothing; used for structuring DAGs.
+
+from airflow.operators.empty import EmptyOperator
+
+EmptyOperator(
+    task_id='start'  # REQUIRED
+)
+
+4. **EmailOperator**
+
+Sends an email.
+
+from airflow.operators.email import EmailOperator
+
+EmailOperator(
+    task_id='send_email',
+    to='recipient@example.com',        # REQUIRED
+    subject='Test Email',              # REQUIRED
+    html_content='Hello from Airflow'  # REQUIRED
+)
+
+5. **BranchPythonOperator**
+
+Runs a Python function that returns the `task_id` to follow (for branching logic).
+
+from airflow.operators.python import BranchPythonOperator
+
+BranchPythonOperator(
+    task_id='branch_task',
+    python_callable=branch_function  # REQUIRED: must return task_id(s)
+)
+
+6. **ShortCircuitOperator**
+
+Skips downstream tasks based on a condition.
+
+from airflow.operators.python import ShortCircuitOperator
+
+ShortCircuitOperator(
+    task_id='check_condition',
+    python_callable=condition_check_func  # REQUIRED: must return True/False
+)
+
+7. **TriggerDagRunOperator**
+
+Triggers another DAG.
+
+from airflow.operators.dagrun_operator import TriggerDagRunOperator
+
+TriggerDagRunOperator(
+    task_id='trigger_other_dag',
+    trigger_dag_id='other_dag_id',  # REQUIRED
+)
+
+8. **DataflowPythonOperator**
+
+Runs a Python-based Apache Beam pipeline on Dataflow.
+
+from airflow.providers.google.cloud.operators.dataflow import DataflowPythonOperator
+
+DataflowPythonOperator(
+    task_id='run_dataflow',
+    py_file='gs://your-bucket/pipeline.py',  # REQUIRED
+    job_name='dataflow-job-name',
+    options={
+        'project': 'your-project',
+        'runner': 'DataflowRunner',
+        ...
+    },
+    location='us-central1',
+)
+
+9. **BigQueryInsertJobOperator**
+
+Runs SQL queries in BigQuery.
+
+from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
+
+BigQueryInsertJobOperator(
+    task_id='run_bq_query',
+    configuration={
+        "query": {
+            "query": "SELECT * FROM dataset.table",  # REQUIRED
+            "useLegacySql": False
+        }
+    },
+    location="US"
+)
+
+10. **GCSToBigQueryOperator**
+
+Loads data from GCS to BigQuery.
+
+from airflow.providers.google.cloud.transfers.gcs_to_bigquery import GCSToBigQueryOperator
+
+GCSToBigQueryOperator(
+    task_id='gcs_to_bq',
+    bucket='your-bucket',                # REQUIRED
+    source_objects=['data.csv'],         # REQUIRED
+    destination_project_dataset_table='project.dataset.table',  # REQUIRED
+    schema_fields=[...],                 # REQUIRED unless autodetect=True
+    write_disposition='WRITE_TRUNCATE',
+)
+
+
+**Summary Table**
+
+| Operator                  | Required Parameters                                                        |
+| ------------------------- | -------------------------------------------------------------------------- |
+| PythonOperator            | `task_id`,`python_callable`                                               |
+| BashOperator              | `task_id`,`bash_command`                                                  |
+| EmptyOperator             |`task_id`                                                                  |
+| EmailOperator             | `task_id`, `to`, `subject`,`html_content`                                 |
+| BranchPythonOperator      | `task_id`,`python_callable`                                               |
+| ShortCircuitOperator      | `task_id`,`python_callable`                                               |
+| TriggerDagRunOperator     | `task_id`,`trigger_dag_id`                                                |
+| DataflowPythonOperator    | `task_id`, `py_file`, `job_name`,`options`                                |
+| BigQueryInsertJobOperator | `task_id`,`configuration`                                                 |
+| GCSToBigQueryOperator     | `task_id`, `bucket`, `source_objects`,`destination_project_dataset_table` |
+
