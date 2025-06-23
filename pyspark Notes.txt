@@ -1,0 +1,588 @@
+# Install Java
+!apt-get install openjdk-11-jdk -y
+ 
+# Download and unzip Spark
+!wget -q https://downloads.apache.org/spark/spark-3.4.1/spark-3.4.1-bin-hadoop3.tgz
+!wget -q  https://archive.apache.org/dist/spark/spark-3.4.1/spark-3.4.1-bin-hadoop3.tgz
+!tar xf spark-3.4.1-bin-hadoop3.tgz
+ 
+# Install findspark
+!pip install -q findspark
+ 
+# Set environment variables
+import os
+os.environ["JAVA_HOME"] = "/usr/lib/jvm/java-11-openjdk-amd64"
+os.environ["SPARK_HOME"] = "/content/spark-3.4.1-bin-hadoop3"
+ 
+# Start Spark
+import findspark
+findspark.init()
+ 
+from pyspark.sql import SparkSession
+spark = SparkSession.builder.appName("ColabPySpark").getOrCreate()
+
+
+
+
+
+#create dataframe
+data= [("anushka",31),("saksham",32),("samriddh",28),("anjali",26),("sameeksha",33),("shashwat",27),("harsh",35),("alpana",49),("neeraj",58),("yogesh",60),("rambali",65)]
+columns= ["Name", "Age"]
+
+df= spark.createDataFrame(data, columns)
+df.toPandas()
+
+
+
+#read CSV file
+df = spark.read.format('csv')\
+  .option('inferSchema',True)\
+  .option('header',True)\
+  .load("/content/superhero_abilities_dataset.csv")
+
+df.toPandas()
+
+
+#to import spark sql functions 
+from pyspark.sql.functions import *
+
+#select
+from pyspark.sql.functions import col
+df.select(col("Name"), col('Alignment'), col('Power Score')).toPandas()
+
+#filter
+df.filter((col('Alignment') == 'Hero') &(col('weapon').isin('Hammer', 'Sword'))).toPandas()
+
+#withColumn + when-otherwise
+df.withColumn('Awesome', when(col('Alignment').isin('Hero'),"cool").otherwise('not cool')).toPandas()
+
+
+
+
+
+Basic DataFrame Functions
+
+| Function               | Description           | Example                                     |
+| ---------------------- | --------------------- | ------------------------------------------- |
+| `show()`               | Displays top rows     | `df.show()`                                 |
+| `select()`             | Selects columns       | `df.select("name", "age")`                  |
+| `filter()` / `where()` | Filters rows          | `df.filter(df.age > 30)`                    |
+| `withColumn()`         | Adds new column       | `df.withColumn("new", df.old + 1)`          |
+| `drop()`               | Drops column          | `df.drop("column_name")`                    |
+| `distinct()`           | Removes duplicates    | `df.distinct()`                             |
+| `groupBy()`            | Groups data           | `df.groupBy("dept").count()`                |
+| `orderBy()` / `sort()` | Sorts rows            | `df.orderBy("age")`                         |
+| `alias()`              | Renames column        | `df.select(col("name").alias("full_name"))` |
+| `limit()`              | Limits number of rows | `df.limit(10)`                              |
+| `join()`               | Joins DataFrames      | `df1.join(df2, "id")`                       |
+
+---
+
+Common SQL Functions (`pyspark.sql.functions`)
+
+You need to import them:
+from pyspark.sql.functions import *
+
+
+| Function                   | Description           | Example                                        |
+| -------------------------- | --------------------- | ---------------------------------------------- |
+| `col()`                    | Refers to column      | `col("age") + 1`                               |
+| `lit()`                    | Creates literal value | `df.withColumn("constant", lit(1))`            |
+| `when()`                   | Conditional logic     | `when(df.age > 18, "adult")`                   |
+| `count()`                  | Counts non-null rows  | `df.groupBy("dept").agg(count("id"))`          |
+| `sum()`                    | Sum of values         | `df.agg(sum("salary"))`                        |
+| `avg()`                    | Average value         | `df.agg(avg("score"))`                         |
+| `max()` / `min()`          | Max/Min value         | `df.agg(max("score"))`                         |
+| `isnull()` / `isNotNull()` | Null checks           | `df.filter(col("name").isNull())`              |
+| `concat()`                 | Concatenates columns  | `concat(col("first"), col("last"))`            |
+| `substring()`              | Extracts substring    | `substring("name", 1, 3)`                      |
+| `regexp_replace()`         | Regex replace         | `regexp_replace(col("text"), "[^a-zA-Z]", "")` |
+| `explode()`                | Flattens arrays       | `explode("hobbies")`                           |
+| `array()`                  | Creates array column  | `array(col("math"), col("science"))`           |
+
+---
+
+Date & Time Functions
+
+| Function                              | Description               | Example                                  |
+| ------------------------------------- | ------------------------- | ---------------------------------------- |
+| `current_date()`                      | Returns current date      | `df.withColumn("today", current_date())` |
+| `current_timestamp()`                 | Returns current timestamp | `current_timestamp()`                    |
+| `datediff()`                          | Days between dates        | `datediff(col("end"), col("start"))`     |
+| `add_months()`                        | Adds months to date       | `add_months(col("date"), 2)`             |
+| `date_add()` / `date_sub()`           | Add/subtract days         | `date_add(col("date"), 10)`              |
+| `year()` / `month()` / `dayofmonth()` | Extracts parts of date    | `year(col("dob"))`                       |
+
+---
+
+Window Functions (`pyspark.sql.window`)
+
+from pyspark.sql.window import Window
+
+
+| Function                  | Description              | Example                            |
+| ------------------------- | ------------------------ | ---------------------------------- |
+| `row_number()`            | Unique row number        | `row_number().over(windowSpec)`    |
+| `rank()` / `dense_rank()` | Rank within window       | `rank().over(windowSpec)`          |
+| `lag()` / `lead()`        | Access previous/next row | `lag("score", 1).over(windowSpec)` |
+| `Window.partitionBy()`    | Partition spec           | `Window.partitionBy("dept")`       |
+
+---
+
+Data Types (`pyspark.sql.types`)
+
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType
+
+
+| Type              | Description     |
+| ----------------- | --------------- |
+| `StringType()`    | String          |
+| `IntegerType()`   | Integer         |
+| `FloatType()`     | Float           |
+| `DoubleType()`    | Double          |
+| `DateType()`      | Date            |
+| `TimestampType()` | Timestamp       |
+| `ArrayType()`     | Array           |
+| `MapType()`       | Dictionary      |
+| `StructType()`    | Schema          |
+| `StructField()`   | Field in schema |
+
+---
+
+UDFs (User Defined Functions)
+
+from pyspark.sql.functions import udf
+from pyspark.sql.types import IntegerType
+
+def square(x):
+    return x * x
+
+square_udf = udf(square, IntegerType())
+df.withColumn("squared", square_udf(df["number"]))
+
+
+---
+
+Reading & Writing Data
+
+
+spark.read.csv("file.csv", header=True)
+df.write.parquet("output.parquet")
+
+Supported formats: `.csv`, `.json`, `.parquet`, `.orc`, `.jdbc`, etc.
+
+
+
+
+
+
+
+
+DATA READING
+
+Data Reading JSON
+
+    "df_json = spark.read.format('json').option('inferSchema',True)\\\n",
+    "                    .option('header',True)\\\n",
+    "                    .option('multiLine',False)\\\n",
+    "                    .load('/FileStore/tables/drivers.json')"
+	
+Data Reading Utils
+
+    "dbutils.fs.ls('/FileStore/tables/')"
+
+    "df = spark.read.format('csv').option('inferSchema',True).option('header',True).load('/FileStore/tables/BigMart_Sales.csv')"
+ 
+Schema Definition
+    "df.printSchema()"
+
+DDL SCHEMA"
+
+    "my_ddl_schema = '''\n",
+    "                    Item_Identifier STRING,\n",
+    "                    Item_Weight STRING,\n",
+    "                    Item_Fat_Content STRING, \n",
+    "                    Item_Visibility DOUBLE,\n",
+    "                    Item_Type STRING,\n",
+    "                    Item_MRP DOUBLE,\n",
+    "                    Outlet_Identifier STRING,\n",
+    "                    Outlet_Establishment_Year INT,\n",
+    "                    Outlet_Size STRING,\n",
+    "                    Outlet_Location_Type STRING, \n",
+    "                    Outlet_Type STRING,\n",
+    "                    Item_Outlet_Sales DOUBLE \n",
+
+
+
+    "df = spark.read.format('csv')\\\n",
+    "            .schema(my_ddl_schema)\\\n",
+    "            .option('header',True)\\\n",
+    "            .load('/FileStore/tables/BigMart_Sales.csv') "
+
+
+StructType() Schema
+
+    "from pyspark.sql.types import * \n",
+    "from pyspark.sql.functions import *  "
+
+    "my_strct_schema = StructType([\n",
+    "                                StructField('Item_Identifier',StringType(),True),\n",
+    "                                StructField('Item_Weight',StringType(),True),\n",
+    "                                StructField('Item_Fat_Content',StringType(),True),\n",
+    "                                StructField('Item_Visibility',StringType(),True),\n",
+    "                                StructField('Item_MRP',StringType(),True),\n",
+    "                                StructField('Outlet_Identifier',StringType(),True),\n",
+    "                                StructField('Outlet_Establishment_Year',StringType(),True),\n",
+    "                                StructField('Outlet_Size',StringType(),True),\n",
+    "                                StructField('Outlet_Location_Type',StringType(),True),\n",
+    "                                StructField('Outlet_Type',StringType(),True),\n",
+    "                                StructField('Item_Outlet_Sales',StringType(),True)\n",
+
+
+    "df = spark.read.format('csv')\\\n",
+    "            .schema(my_strct_schema)\\\n",
+    "            .option('header',True)\\\n",
+    "            .load('/FileStore/tables/BigMart_Sales.csv')"
+
+   },
+
+
+SELECT 
+
+    "df.select(col('Item_Identifier'),col('Item_Weight'),col('Item_Fat_Content')).display()"
+
+ALIAS
+
+    "df.select(col('Item_Identifier').alias('Item_ID')).display()"
+
+FILTER
+	Scenario - 1 
+		"df.filter(col('Item_Fat_Content')=='Regular').display()"
+	Scenario - 2
+		"df.filter((col('Item_Type') == 'Soft Drinks') & (col('Item_Weight')<10)).display()  "
+	Scenario - 3
+		"df.filter((col('Outlet_Size').isNull()) & (col('Outlet_Location_Type').isin('Tier 1','Tier 2'))).display()"
+
+withColumnRenamed
+	"df.withColumnRenamed('Item_Weight','Item_Wt').display()"
+
+withColumn"
+	Scenario - 1"
+		"df = df.withColumn('flag',lit(\"new\")) "
+		"df.withColumn('multiply',col('Item_Weight')*col('Item_MRP')).display()"
+	Scenario - 2"
+		"df = df.withColumn('Item_Fat_Content',regexp_replace(col('Item_Fat_Content'),\"Regular\",\"Reg\"))\\\n",
+    "    .withColumn('Item_Fat_Content',regexp_replace(col('Item_Fat_Content'),\"Low Fat\",\"Lf\"))\n",
+
+Type Casting"
+	"df = df.withColumn('Item_Weight', col('Item_Weight').cast(StringType())) "
+   ]
+ 
+sort"
+	Scenario - 1"
+		"df.sort(col('Item_Weight').desc()).display()"
+	Scenario - 2"
+		"df.sort(col('Item_Visibility').asc()).display()"
+	Scenario - 3"
+		"df.sort(['Item_Weight','Item_Visibility'],ascending = [0,0]).display()"
+	Scenario - 4"
+		"df.sort(['Item_weight','Item_Visibility'], ascending = [0,1]).display()"
+
+Limit"
+	"df.limit(10).display() "
+
+DROP"
+	Scenario-1"
+		"df.drop('Item_Visibility').display()"
+	Scenario-2"
+  
+    "df.drop('Item_Visibility','Item_Type').display()"
+
+DRop_Duplicates"
+  
+		"df.dropDuplicates().display()"
+	Scenario - 2"
+  
+		"df.drop_duplicates(subset=['Item_Type']).display()"
+  
+		"df.distinct().display()"
+
+UNION and UNION BY NAME"
+ #Preaparing Dataframes"
+  
+    "data1 = [('1','kad'),\n",
+    "        ('2','sid')]\n",
+    "schema1 = 'id STRING, name STRING' \n",
+    "\n",
+    "df1 = spark.createDataFrame(data1,schema1)\n",
+    "\n",
+    "data2 = [('3','rahul'),\n",
+    "        ('4','jas')]\n",
+    "schema2 = 'id STRING, name STRING' \n",
+    "\n",
+    "df2 = spark.createDataFrame(data2,schema2)\n",
+    "\n"
+  
+    "df1.display()"
+  
+    "df2.display()"
+  
+  
+Union"
+  
+    "df1.union(df2).display()"
+  
+    "data1 = [('kad','1',),\n",
+    "        ('sid','2',)]\n",
+    "schema1 = 'name STRING, id STRING' \n",
+    "\n",
+    "df1 = spark.createDataFrame(data1,schema1)\n",
+    "\n",
+    "df1.display()"
+  
+    "df1.union(df2).display()"
+  Union by Name"
+  
+    "df1.unionByName(df2).display()"
+  String Functions"
+ Initcap()"
+  
+    "df.select(upper('Item_Type').alias('upper_Item_Type')).display()"
+  Date Functions"
+ Current_Date"
+  
+    "df = df.withColumn('curr_date',current_date())\n",
+    "\n",
+    "df.display()"
+ Date_Add()"
+  
+    "df = df.withColumn('week_after',date_add('curr_date',7))\n",
+    "\n",
+    "df.display()"
+ Date_Sub()"
+  
+    "df.withColumn('week_before',date_sub('curr_date',7)).display()"
+  
+    "df = df.withColumn('week_before',date_add('curr_date',-7)) \n",
+    "\n",
+    "df.display()"
+  DateDIFF"
+  
+    "df = df.withColumn('datediff',datediff('week_after','curr_date'))\n",
+    "\n",
+    "df.display()"
+  Date_Format()"
+  
+    "df = df.withColumn('week_before',date_format('week_before','dd-MM-yyyy'))\n",
+    "\n",
+    "df.display()"
+  Handling Nulls"
+ Dropping NUlls"
+  
+    "df.dropna('all').display()"
+  
+    "df.dropna('any').display()"
+  
+    "df.dropna(subset=['Outlet_Size']).display()"
+  
+    "df.display()"
+ Filling Nulls"
+  
+    "df.fillna('NotAvailable').display()"
+  
+    "df.fillna('NotAvailable',subset=['Outlet_Size']).display()"
+  SPLIT and Indexing"
+ SPLIT"
+  
+    "df.withColumn('Outlet_Type',split('Outlet_Type',' ')).display()"
+ Indexing"
+  
+    "df.withColumn('Outlet_Type',split('Outlet_Type',' ')[1]).display()"
+  Explode"
+  
+    "df_exp = df.withColumn('Outlet_Type',split('Outlet_Type',' '))\n",
+    "\n",
+    "df_exp.display()"
+  
+    "df_exp.withColumn('Outlet_Type',explode('Outlet_Type')).display()"
+  
+    "df_exp.display()"
+  
+    "df_exp.withColumn('Type1_flag',array_contains('Outlet_Type','Type1')).display()"
+  GroupBY"
+ Scenario - 1"
+  
+    "df.display()"
+  
+    "df.groupBy('Item_Type').agg(sum('Item_MRP')).display()"
+ Scenario - 2"
+  
+    "df.groupBy('Item_Type').agg(avg('Item_MRP')).display()"
+ SCenario - 3"
+  
+    "df.groupBy('Item_Type','Outlet_Size').agg(sum('Item_MRP').alias('Total_MRP')).display()"
+ Scenario - 4"
+  
+    "df.groupBy('Item_Type','Outlet_Size').agg(sum('Item_MRP'),avg('Item_MRP')).display()"
+  Collect_List"
+  
+    "data = [('user1','book1'),\n",
+    "        ('user1','book2'),\n",
+    "        ('user2','book2'),\n",
+    "        ('user2','book4'),\n",
+    "        ('user3','book1')]\n",
+    "\n",
+    "schema = 'user string, book string'\n",
+    "\n",
+    "df_book = spark.createDataFrame(data,schema)\n",
+    "\n",
+    "df_book.display()"
+  
+    "df_book.groupBy('user').agg(collect_list('book')).display()"
+  
+    "df.select('Item_Type','Outlet_Size','Item_MRP').display()"
+  PIVOT"
+  
+    "df.groupBy('Item_Type').pivot('Outlet_Size').agg(avg('Item_MRP')).display()"
+  When-Otherwise"
+ Scenario - 1"
+  
+    "df = df.withColumn('veg_flag',when(col('Item_Type')=='Meat','Non-Veg').otherwise('Veg'))"
+  
+    "df.display()"
+  
+    "df.withColumn('veg_exp_flag',when(((col('veg_flag')=='Veg') & (col('Item_MRP')<100)),'Veg_Inexpensive')\\\n",
+    "                            .when((col('veg_flag')=='Veg') & (col('Item_MRP')>100),'Veg_Expensive')\\\n",
+    "                            .otherwise('Non_Veg')).display() "
+  JOINS"
+  
+    "dataj1 = [('1','gaur','d01'),\n",
+    "          ('2','kit','d02'),\n",
+    "          ('3','sam','d03'),\n",
+    "          ('4','tim','d03'),\n",
+    "          ('5','aman','d05'),\n",
+    "          ('6','nad','d06')] \n",
+    "\n",
+    "schemaj1 = 'emp_id STRING, emp_name STRING, dept_id STRING' \n",
+    "\n",
+    "df1 = spark.createDataFrame(dataj1,schemaj1)\n",
+    "\n",
+    "dataj2 = [('d01','HR'),\n",
+    "          ('d02','Marketing'),\n",
+    "          ('d03','Accounts'),\n",
+    "          ('d04','IT'),\n",
+    "          ('d05','Finance')]\n",
+    "\n",
+    "schemaj2 = 'dept_id STRING, department STRING'\n",
+    "\n",
+    "df2 = spark.createDataFrame(dataj2,schemaj2)"
+  
+    "df1.display()"
+  
+    "df2.display()"
+ Inner Join"
+  
+    "df1.join(df2, df1['dept_id']==df2['dept_id'],'inner').display()"
+ Left Join"
+  
+    "df1.join(df2,df1['dept_id']==df2['dept_id'],'left').display()"
+ LEFT JOIN"
+  
+    "df1.join(df2,df1['dept_id']==df2['dept_id'],'right').display()"
+ ANTI JOIN "
+  
+    "df1.join(df2,df1['dept_id']==df2['dept_id'],'anti').display()"
+  WINDOW FUNCTIONS"
+ ROW_NUMBER()"
+  
+    "df.display()"
+  
+    "from pyspark.sql.window import Window"
+  
+    "df.withColumn('rowCol',row_number().over(Window.orderBy('Item_Identifier'))).display()"
+ RANK VS DENSE RANK "
+  
+    "df.withColumn('rank',rank().over(Window.orderBy(col('Item_Identifier').desc())))\\\n",
+    "        .withColumn('denseRank',dense_rank().over(Window.orderBy(col('Item_Identifier').desc()))).display()"
+  
+    "df.withColumn('dum',sum('Item_MRP').over(Window.orderBy('Item_Identifier').rowsBetween(Window.unboundedPreceding,Window.currentRow))).display()"
+
+Cumulative Sum"
+  
+    "df.withColumn('cumsum',sum('Item_MRP').over(Window.orderBy('Item_Type'))).display()"
+  
+    "df.withColumn('cumsum',sum('Item_MRP').over(Window.orderBy('Item_Type').rowsBetween(Window.unboundedPreceding,Window.currentRow))).display()"
+  
+    "df.withColumn('totalsum',sum('Item_MRP').over(Window.orderBy('Item_Type').rowsBetween(Window.unboundedPreceding,Window.unboundedFollowing))).display()"
+
+USER DEFINED FUNCTIONS (UDF)"
+
+STEP - 1"
+  
+    "def my_func(x):\n",
+    "    return x*x "
+
+STEP - 2"
+  
+    "my_udf = udf(my_func)"
+  
+    "df.withColumn('mynewcol',my_udf('Item_MRP')).display()"
+
+
+DATA WRITING"
+
+CSV"
+  
+    "df.write.format('csv')\\\n",
+    "        .save('/FileStore/tables/CSV/data.csv')"
+ APPEND"
+  
+    "df.write.format('csv')\\\n",
+    "        .mode('append')\\\n",
+    "        .save('/FileStore/tables/CSV/data.csv')"
+  
+    "df.write.format('csv')\\\n",
+    "        .mode('append')\\\n",
+    "        .option('path','/FileStore/tables/CSV/data.csv')\\\n",
+    "        .save()"
+ Overwrite"
+  
+    "df.write.format('csv')\\\n",
+    ".mode('overwrite')\\\n",
+    ".option('path','/FileStore/tables/CSV/data.csv')\\\n",
+    ".save()"
+ Error"
+  
+    "df.write.format('csv')\\\n",
+    ".mode('error')\\\n",
+    ".option('path','/FileStore/tables/CSV/data.csv')\\\n",
+    ".save()"
+ Ignore"
+  
+    "df.write.format('csv')\\\n",
+    ".mode('ignore')\\\n",
+    ".option('path','/FileStore/tables/CSV/data.csv')\\\n",
+    ".save()"
+ PARQUET"
+  
+    "df.write.format('parquet')\\\n",
+    ".mode('overwrite')\\\n",
+    ".option('path','/FileStore/tables/CSV/data.csv')\\\n",
+    ".save()"
+ TABLE"
+  
+    "df.write.format('parquet')\\\n",
+    ".mode('overwrite')\\\n",
+    ".saveAsTable('my_table')"
+  
+    "df.display()"
+ SPARK SQL"
+ createTempView "
+  
+    "df.createTempView('my_view')"
+ 
+    "select * from my_view where Item_Fat_Content = 'Lf'"
+  
+    "df_sql = spark.sql(\"select * from my_view where Item_Fat_Content = 'Lf'\")"
+  
+    "df_sql.display()"
